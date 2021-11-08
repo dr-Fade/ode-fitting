@@ -2,7 +2,7 @@ module OdeFitting
 
 using DynamicalSystems, LinearAlgebra, DifferentialEquations
 
-function fit_ode_to_time_series(g::Dataset, ▵t)
+function fit_ode_to_time_series(g::Dataset, dt)
     # check that the data passed has acceptable dimensions
     m = length(g) - 1
     d = dimension(g)
@@ -10,7 +10,8 @@ function fit_ode_to_time_series(g::Dataset, ▵t)
         error("Only 3d model with more than 20 points is accepted!")
     end
     # construct a matrix of numerical derivatives
-    D = hcat((g[begin+1:end].data - g[begin:end-1].data)'...) / ▵t
+    diff = (g[begin+1:end].data - g[begin:end-1].data) / dt
+    D = [[x[1] for x in diff]; [x[2] for x in diff]; [x[3] for x in diff]]
     g = vcat(g[begin+1:end].data'...)
     # allocate space for the jacobian matrix
     J = zeros(Float32, 3*m, 20)
@@ -46,9 +47,9 @@ function fit_ode_to_time_series(g::Dataset, ▵t)
     J[2m+1:3m, 20] = -g[:,2] .* g[:,3]
     #check rank and assign μ
     μ = if rank(J) < 20 rand() else 0 end
-    Y = (J' * J + μ * I(20)) ^ -1 * J' * D'
+    Y = (J' * J + μ * I(20)) ^ -1 * J' * D
     println("Y = $Y")
-    println("Proceeding to calculate tre trajectory...")
+    println("Proceeding to calculate the trajectory...")
 
     u0 = [-10.,-6.,0]
     tspan = (0.00,25.0)
